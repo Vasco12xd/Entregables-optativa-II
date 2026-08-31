@@ -9,7 +9,7 @@
 
 ## Alcance del Proyecto
 
-### Dentro del Alcance (In-Scope)
+### Dentro del Alcance
 * Recepción e ingesta centralizada de pedidos desde canales externos.
 * Módulo de validación y consulta de disponibilidad de inventario distribuido.
 * Módulo de asignación y seguimiento de rutas para repartidores.
