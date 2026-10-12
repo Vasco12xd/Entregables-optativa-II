@@ -23,6 +23,31 @@
 * Infraestructura propia de envío de SMS o correos: se delega al Servicio de Notificaciones.
 * Reemplazo del ERP/CRM: facturación, contabilidad y datos maestros de clientes siguen en el sistema interno.
 
+## Requisitos Prioritarios
+
+Los requisitos imprescindibles (*Must*) cubren el flujo central **pedido → stock → asignación → seguimiento**:
+
+| ID | Requisito |
+| :--- | :--- |
+| RF-01 | Registrar pedidos de múltiples canales sin duplicados |
+| RF-02 | Validar stock por almacén antes de confirmar |
+| RF-03 | Crear ruta y asignar repartidor |
+| RF-04 | Actualizar el estado en cada etapa |
+| RF-05 | Seguimiento para cliente y soporte |
+| RF-09 | Integrar pagos, geolocalización, notificaciones y ERP/CRM |
+
+Los atributos de calidad decisivos son **consistencia** (sin sobreventas, duplicados ni asignaciones dobles) y **facilidad de evolución** (cambiar una regla o un proveedor sin tocar toda la aplicación). Las metas numéricas son supuestos por validar con el negocio ([escenarios de calidad](docs/actividad-2/escenarios-calidad.md)).
+
+## Decisión Arquitectónica
+
+LogiTracker se construye como un **monolito modular por dominios**: una sola aplicación desplegable con módulos de Pedidos, Inventario, Ruteo, Entregas e Incidencias, comunicados solo mediante contratos, y con la infraestructura detrás de adaptadores.
+
+* Se eligió frente a un monolito por capas (no separa las áreas del negocio) y frente a microservicios (complica la consistencia y multiplica el costo operativo sin evidencia que lo justifique).
+* **Trade-off aceptado:** la aplicación escala completa y no por módulo. A cambio, se gana consistencia y simplicidad operativa.
+* Ruteo queda detrás de un contrato estable para poder extraerlo como servicio si la evidencia lo exige.
+
+Detalle completo en el [ADR-001](docs/adr/ADR-001-estructura-monolito-modular.md).
+
 ## Documentación por Actividad
 
 ### Actividad 1: Diagnóstico y contexto
@@ -30,3 +55,13 @@
 * [Análisis del problema](docs/actividad-1/analisis-problema.md)
 * [Matriz de riesgos](docs/actividad-1/matriz-de-riesgo.md)
 * [Supuestos y decisiones iniciales](docs/actividad-1/supuestos-y-decisiones-iniciales.md)
+
+### Actividad 2: Requisitos y decisión estructural
+* [Catálogo de requisitos](docs/actividad-2/catalogo-requisitos.md)
+* [Matriz de priorización](docs/actividad-2/matriz-priorizacion.md)
+* [Escenarios de calidad](docs/actividad-2/escenarios-calidad.md)
+* [Comparación de alternativas](docs/actividad-2/comparacion-alternativas.md)
+* [Criterios verificables](docs/actividad-2/criterios-verificables.md)
+
+### Registros de Decisión (ADR)
+* [ADR-001: Monolito modular por dominios](docs/adr/ADR-001-estructura-monolito-modular.md)
