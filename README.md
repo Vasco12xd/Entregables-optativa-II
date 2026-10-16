@@ -48,6 +48,39 @@ LogiTracker se construye como un **monolito modular por dominios**: una sola apl
 
 Detalle completo en el [ADR-001](docs/adr/ADR-001-estructura-monolito-modular.md).
 
+## Propuesta de Diseño: Asignar un Repartidor
+
+El primer flujo diseñado es **asignar un repartidor a una entrega** (`AssignCourierUseCase`), dentro del módulo de Entregas. La propuesta separa el negocio de la infraestructura en tres capas:
+
+* **Dominio:** la entidad `Delivery` protege las reglas críticas: un solo repartidor activo, solo repartidores en turno y sin la ruta saturada, y estados siempre coherentes.
+* **Aplicación:** el caso de uso coordina la asignación y depende solo de puertos (`IDeliveryRepository`, `ICourierAvailability`, `IDeliveryEventPublisher`, `IClock`).
+* **Infraestructura:** los adaptadores implementan esos puertos (base de datos, fuente de turnos, publicación de avisos) y se construyen en la Actividad 4.
+
+```mermaid
+graph TD
+    API[🌐 API / Controladores]
+
+    subgraph Infraestructura [🔌 Infraestructura]
+        Adaptadores[Repositorio, disponibilidad, <br> publicador de hechos]
+    end
+
+    subgraph Aplicacion [⚙️ Aplicación]
+        UseCase[AssignCourierUseCase]
+        Puertos[Puertos]
+    end
+
+    subgraph Dominio [💎 Dominio]
+        Delivery[Delivery <br> Invariantes]
+    end
+
+    API -->|Invoca| UseCase
+    UseCase -->|Usa| Puertos
+    UseCase -->|Ejecuta reglas| Delivery
+    Adaptadores -.->|Implementan| Puertos
+```
+
+Las dependencias apuntan siempre hacia el dominio. Las decisiones de diseño y sus alternativas están en el [ADR-002](docs/adr/ADR-002-diseno-flujo-asignacion.md), y la vista general del sistema en [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ## Documentación por Actividad
 
 ### Actividad 1: Diagnóstico y contexto
@@ -63,5 +96,16 @@ Detalle completo en el [ADR-001](docs/adr/ADR-001-estructura-monolito-modular.md
 * [Comparación de alternativas](docs/actividad-2/comparacion-alternativas.md)
 * [Criterios verificables](docs/actividad-2/criterios-verificables.md)
 
-### Registros de Decisión (ADR)
+### Actividad 3: Diseño y dominio
+* [Flujo: asignar repartidor](docs/actividad-3/flujo-asignar-repartidor.md)
+* [Lenguaje ubicuo y términos ambiguos](docs/actividad-3/lenguaje-ubicuo.md)
+* [Modelo de dominio, estados y transiciones](docs/actividad-3/modelo-dominio.md)
+* [Invariantes y escenarios de aceptación](docs/actividad-3/invariantes-y-escenarios.md)
+* [Mapa de contextos y contratos](docs/actividad-3/mapa-contextos.md)
+* [Casos de uso, puertos y adaptadores](docs/actividad-3/casos-uso-puertos-adaptadores.md)
+* [Diagramas C4](docs/actividad-3/c4.md)
+
+### Arquitectura y Registros de Decisión (ADR)
+* [ARCHITECTURE.md](ARCHITECTURE.md): vista general, módulos, reglas críticas y límites
 * [ADR-001: Monolito modular por dominios](docs/adr/ADR-001-estructura-monolito-modular.md)
+* [ADR-002: Diseño del dominio y de las capas para la asignación](docs/adr/ADR-002-diseno-flujo-asignacion.md)
