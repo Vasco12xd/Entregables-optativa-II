@@ -1,0 +1,22 @@
+# Infraestructura local reproducible de LogiTracker (video 18: infraestructura como código).
+# Credenciales SOLO para desarrollo local. En otros entornos se inyectan como variables de entorno o desde un gestor de secretos.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: logitracker-postgres
+    environment:
+      POSTGRES_DB: logitracker
+      POSTGRES_USER: logitracker
+      POSTGRES_PASSWORD: logitracker_dev
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - logitracker-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U logitracker -d logitracker"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  logitracker-data:

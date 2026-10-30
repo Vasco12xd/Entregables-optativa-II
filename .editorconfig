@@ -1,0 +1,10 @@
+root = true
+
+[*.cs]
+indent_style = space
+indent_size = 4
+charset = utf-8
+
+# Las migraciones las genera EF Core: no se analizan como código escrito a mano.
+[**/Migrations/*.cs]
+generated_code = true

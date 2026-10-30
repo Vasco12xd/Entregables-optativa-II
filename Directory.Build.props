@@ -1,0 +1,15 @@
+<Project>
+  <!-- Reglas de compilación comunes a todos los proyectos de LogiTracker. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <!-- Comprobación de calidad: cualquier advertencia del compilador o de los analizadores rompe la compilación. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- Los proyectos de prueba usan nombres descriptivos con guiones bajos (ESC_01_...). -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+</Project>

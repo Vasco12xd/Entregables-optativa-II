@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LogiTracker.Api/LogiTracker.Api.csproj" />
+    <Project Path="src/LogiTracker.Application/LogiTracker.Application.csproj" />
+    <Project Path="src/LogiTracker.Domain/LogiTracker.Domain.csproj" />
+    <Project Path="src/LogiTracker.Infrastructure/LogiTracker.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LogiTracker.Application.Tests/LogiTracker.Application.Tests.csproj" />
+    <Project Path="tests/LogiTracker.ArchitectureTests/LogiTracker.ArchitectureTests.csproj" />
+    <Project Path="tests/LogiTracker.Domain.Tests/LogiTracker.Domain.Tests.csproj" />
+    <Project Path="tests/LogiTracker.IntegrationTests/LogiTracker.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

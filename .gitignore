@@ -1,2 +1,9 @@
 # Material de referencia del curso (repositorio del profesor, no forma parte de la entrega)
 OPTATIVA_II/
+
+# .NET
+bin/
+obj/
+TestResults/
+*.user
+.vs/
