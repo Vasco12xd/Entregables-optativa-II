@@ -1,0 +1,136 @@
+### Demostración del vertical slice "Asignar repartidor" (Actividad 4)
+### Requisitos: `docker compose up -d` y `dotnet run --project src/LogiTracker.Api`.
+### En VS Code se ejecuta con la extensión REST Client (clic en "Send Request").
+### Repartidores de demostración: Ana (3/5), Luis (1/5), Sofia (5/5, saturada), Pedro (fuera de turno).
+
+@baseUrl = http://localhost:5125
+@apiKey = dev-key-marta-0001
+@ana = 11111111-1111-1111-1111-111111111111
+@luis = 22222222-2222-2222-2222-222222222222
+@sofia = 33333333-3333-3333-3333-333333333333
+@pedro = 44444444-4444-4444-4444-444444444444
+
+### 0. Salud del sistema (sin autenticación)
+GET {{baseUrl}}/health
+
+### 1. Sin clave de API -> 401
+GET {{baseUrl}}/api/couriers
+
+### 2. Repartidores con su turno y su carga
+GET {{baseUrl}}/api/couriers
+X-Api-Key: {{apiKey}}
+
+### 3. Pedido listo para logística -> crea la entrega (201). Repetirlo devuelve la misma entrega (200).
+# @name create
+POST {{baseUrl}}/api/deliveries
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "orderId": "{{$guid}}",
+  "address": { "street": "Calle 10 # 20-30", "city": "Bogota", "postalCode": "110111" },
+  "windowStart": "2026-11-02T14:00:00-05:00",
+  "windowEnd": "2026-11-02T18:00:00-05:00",
+  "packageCount": 2
+}
+
+@deliveryId = {{create.response.body.$.deliveryId}}
+
+### 4. ESC-05: Sofia tiene la ruta saturada -> 422 courier_capacity_reached
+POST {{baseUrl}}/api/deliveries/{{deliveryId}}/assignment
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{ "courierId": "{{sofia}}" }
+
+### 5. ESC-04: Pedro está fuera de turno -> 422 courier_unavailable
+POST {{baseUrl}}/api/deliveries/{{deliveryId}}/assignment
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{ "courierId": "{{pedro}}" }
+
+### 6. ESC-01: asignar a Ana -> 200
+POST {{baseUrl}}/api/deliveries/{{deliveryId}}/assignment
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{ "courierId": "{{ana}}" }
+
+### 7. ESC-03: reintento con Ana -> 200 sin duplicar
+POST {{baseUrl}}/api/deliveries/{{deliveryId}}/assignment
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{ "courierId": "{{ana}}" }
+
+### 8. ESC-02: intentar con Luis -> 409 delivery_already_assigned
+POST {{baseUrl}}/api/deliveries/{{deliveryId}}/assignment
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{ "courierId": "{{luis}}" }
+
+### 9. Consultar estado e historial (assignedBy = operadora autenticada)
+GET {{baseUrl}}/api/deliveries/{{deliveryId}}
+X-Api-Key: {{apiKey}}
+
+### 10. ESC-11: liberar sin motivo -> 400 release_reason_required
+POST {{baseUrl}}/api/deliveries/{{deliveryId}}/assignment/release
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{ "reason": "" }
+
+### 11. ESC-10: liberar con motivo -> 200, vuelve a pendiente
+POST {{baseUrl}}/api/deliveries/{{deliveryId}}/assignment/release
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{ "reason": "Vehiculo averiado" }
+
+### ---------- Fallas controladas (solo en desarrollo) ----------
+
+### 12. Simular caída de la fuente de disponibilidad
+PUT {{baseUrl}}/api/dev/faults
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{ "availabilityDown": true, "notificationFault": "None" }
+
+### 13. ESC-09: asignar con la fuente caída -> 503 + Retry-After, la entrega sigue pendiente
+POST {{baseUrl}}/api/deliveries/{{deliveryId}}/assignment
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{ "courierId": "{{luis}}" }
+
+### 14. Simular que el proveedor de notificaciones rechaza los mensajes
+PUT {{baseUrl}}/api/dev/faults
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{ "availabilityDown": false, "notificationFault": "Permanent" }
+
+### 15. Asignar: la asignación se confirma (200) aunque el aviso falle
+POST {{baseUrl}}/api/deliveries/{{deliveryId}}/assignment
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{ "courierId": "{{luis}}" }
+
+### 16. El aviso fallido quedó apartado en la DLQ (esperar ~2 s)
+# @name deadLetters
+GET {{baseUrl}}/api/outbox/dead-letters
+X-Api-Key: {{apiKey}}
+
+### 17. Corregir la causa (proveedor de nuevo disponible)
+PUT {{baseUrl}}/api/dev/faults
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{ "availabilityDown": false, "notificationFault": "None" }
+
+### 18. Reprocesar el aviso apartado -> 202 (luego la DLQ queda vacía)
+POST {{baseUrl}}/api/outbox/dead-letters/{{deadLetters.response.body.$[0].id}}/requeue
+X-Api-Key: {{apiKey}}
