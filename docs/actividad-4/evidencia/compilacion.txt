@@ -1,0 +1,19 @@
+﻿# Compilación con analizadores (advertencias = errores)
+# Ejecutado el 2026-10-30 14:25
+
+  Determinando los proyectos que se van a restaurar...
+  Todos los proyectos est├ín actualizados para la restauraci├│n.
+  LogiTracker.Domain -> D:\Projects\Entregables-optativa-II\src\LogiTracker.Domain\bin\Release\net10.0\LogiTracker.Domain.dll
+  LogiTracker.Application -> D:\Projects\Entregables-optativa-II\src\LogiTracker.Application\bin\Release\net10.0\LogiTracker.Application.dll
+  LogiTracker.Domain.Tests -> D:\Projects\Entregables-optativa-II\tests\LogiTracker.Domain.Tests\bin\Release\net10.0\LogiTracker.Domain.Tests.dll
+  LogiTracker.Infrastructure -> D:\Projects\Entregables-optativa-II\src\LogiTracker.Infrastructure\bin\Release\net10.0\LogiTracker.Infrastructure.dll
+  LogiTracker.Application.Tests -> D:\Projects\Entregables-optativa-II\tests\LogiTracker.Application.Tests\bin\Release\net10.0\LogiTracker.Application.Tests.dll
+  LogiTracker.Api -> D:\Projects\Entregables-optativa-II\src\LogiTracker.Api\bin\Release\net10.0\LogiTracker.Api.dll
+  LogiTracker.ArchitectureTests -> D:\Projects\Entregables-optativa-II\tests\LogiTracker.ArchitectureTests\bin\Release\net10.0\LogiTracker.ArchitectureTests.dll
+  LogiTracker.IntegrationTests -> D:\Projects\Entregables-optativa-II\tests\LogiTracker.IntegrationTests\bin\Release\net10.0\LogiTracker.IntegrationTests.dll
+
+Compilaci├│n correcta.
+    0 Advertencia(s)
+    0 Errores
+
+Tiempo transcurrido 00:00:02.16

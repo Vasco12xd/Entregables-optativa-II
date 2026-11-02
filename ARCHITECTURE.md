@@ -101,14 +101,21 @@ Lista completa: [invariantes y escenarios](docs/actividad-3/invariantes-y-escena
 
 - Entregas **no recibe** precio ni datos de pago: solo dirección, ventana y número de paquetes (contrato C-01).
 - Cada actor solo accede a lo que le corresponde. Un cliente no puede consultar pedidos ajenos (escenario de calidad EC-09).
-- Toda asignación registra el operador que la hizo (INV-05).
-- Este repositorio no contiene claves, contraseñas ni datos personales reales.
+- Toda asignación registra el operador que la hizo (INV-05). El operador se obtiene de su **clave de API**, no del cuerpo de la petición; las claves se guardan solo como hash.
+- Registros y avisos a sistemas externos llevan **solo identificadores**: nunca la dirección, nombres ni claves.
+- Las dependencias se auditan en cada compilación; una vulnerabilidad conocida rompe la compilación.
+- Las únicas credenciales del repositorio son de **desarrollo local** (base de datos en Docker y claves de demostración).
+
+Registro completo de riesgos de seguridad: [riesgos y observabilidad](docs/actividad-4/riesgos-y-observabilidad.md#riesgos-de-seguridad).
 
 ## 9. Operación y observabilidad
 
-- Los hechos del dominio se guardan junto con los datos y un proceso en segundo plano los envía (*outbox*), de modo que la falla de un servicio externo no revierte una operación válida.
-- Los adaptadores de servicios externos tienen tiempo máximo de espera y reintentos (EC-05).
-- Las fallas de integración deben generar alertas (EC-11). Su implementación corresponde a las actividades 4 y 5.
+- Los hechos del dominio se guardan **en la misma transacción** que la entrega y un despachador en segundo plano los envía (*outbox*). La falla de un servicio externo no revierte una operación válida.
+- Envío con **reintentos limitados y espera creciente**; tras agotarlos, el aviso pasa a la **Dead Letter Queue** (`/api/outbox/dead-letters`) y puede reprocesarse.
+- La fuente de disponibilidad tiene un tiempo máximo de espera de 3 s; si falla, la API responde `503` con `Retry-After` y la entrega no cambia.
+- **Señales:** registros estructurados con `CorrelationId`, métricas (`logitracker.assignments`, `logitracker.outbox.dead_lettered`…), trazas OpenTelemetry y `/health`.
+
+Detalle de señales, datos excluidos y guía de diagnóstico: [riesgos y observabilidad](docs/actividad-4/riesgos-y-observabilidad.md#4-señales-de-observabilidad).
 
 ## 10. Decisiones arquitectónicas
 
@@ -116,17 +123,30 @@ Lista completa: [invariantes y escenarios](docs/actividad-3/invariantes-y-escena
 | :--- | :--- | :--- |
 | [ADR-001](docs/adr/ADR-001-estructura-monolito-modular.md) | Monolito modular por dominios | Aceptada |
 | [ADR-002](docs/adr/ADR-002-diseno-flujo-asignacion.md) | Capas con puertos y adaptadores; la Entrega protege la asignación | Aceptada |
+| [ADR-003](docs/adr/ADR-003-implementacion-vertical-slice.md) | .NET 10, PostgreSQL y EF Core; guarda atómica de capacidad y *outbox* transaccional | Aceptada |
 
 ## 11. Cómo ejecutar y probar
 
-**Todavía no hay código ejecutable.** Hasta la Actividad 3, el repositorio contiene el análisis y el diseño. La implementación del flujo de asignación, sus pruebas y las instrucciones para ejecutarlo se agregarán en la Actividad 4, siguiendo la [estructura de carpetas propuesta](docs/actividad-3/casos-uso-puertos-adaptadores.md#9-estructura-de-carpetas-propuesta).
+El flujo de asignación está implementado como un *vertical slice* ejecutable ([implementación](docs/actividad-4/implementacion.md)).
+
+```powershell
+docker compose up -d                                         # PostgreSQL local
+dotnet run --project src/LogiTracker.Api                     # API en http://localhost:5125
+powershell -ExecutionPolicy Bypass -File scripts/verify.ps1  # Compilación, 76 pruebas y auditoría de dependencias
+```
+
+Instrucciones completas en el [README](README.md#cómo-ejecutar-la-actividad-4). Resultados de la última ejecución en [resultados y próximos pasos](docs/actividad-4/resultados-y-proximos-pasos.md).
+
+Las reglas de esta arquitectura se verifican automáticamente con *fitness functions* ([ArchitectureRulesTests.cs](tests/LogiTracker.ArchitectureTests/ArchitectureRulesTests.cs)): el dominio no depende de nada, la aplicación no depende de la infraestructura y los controladores solo usan casos de uso.
 
 ## 12. Riesgos y límites conocidos
 
 | Riesgo o límite | Referencia |
 | :--- | :--- |
 | La aplicación escala completa, no por módulo. | ADR-001 |
-| La capacidad del repartidor no está protegida entre entregas asignadas al mismo tiempo. | [ADR-002](docs/adr/ADR-002-diseno-flujo-asignacion.md#riesgos-y-limitaciones-conocidas) |
+| ~~La capacidad del repartidor no está protegida entre entregas asignadas al mismo tiempo.~~ **Resuelto** con una guarda atómica en la base. | [ADR-003](docs/adr/ADR-003-implementacion-vertical-slice.md) (A-02) |
+| La regla de capacidad está expresada en dos lugares (dominio y guarda SQL). | [ADR-003](docs/adr/ADR-003-implementacion-vertical-slice.md#lo-que-aceptamos) |
+| La carga del repartidor no se descuenta al entregar o fallar (transiciones aún no implementadas). | [Riesgos residuales](docs/actividad-4/resultados-y-proximos-pasos.md#6-riesgos-residuales) |
 | Las metas numéricas de calidad son supuestos por validar. | [Escenarios de calidad](docs/actividad-2/escenarios-calidad.md#supuestos-de-medida) |
 | Varios términos del negocio están pendientes de confirmar. | [Términos ambiguos](docs/actividad-3/lenguaje-ubicuo.md#2-términos-ambiguos-por-confirmar) |
 

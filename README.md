@@ -54,7 +54,7 @@ El primer flujo diseñado es **asignar un repartidor a una entrega** (`AssignCou
 
 * **Dominio:** la entidad `Delivery` protege las reglas críticas: un solo repartidor activo, solo repartidores en turno y sin la ruta saturada, y estados siempre coherentes.
 * **Aplicación:** el caso de uso coordina la asignación y depende solo de puertos (`IDeliveryRepository`, `ICourierAvailability`, `IDeliveryEventPublisher`, `IClock`).
-* **Infraestructura:** los adaptadores implementan esos puertos (base de datos, fuente de turnos, publicación de avisos) y se construyen en la Actividad 4.
+* **Infraestructura:** los adaptadores implementan esos puertos (base de datos, fuente de turnos, publicación de avisos). Se construyeron en la Actividad 4.
 
 ```mermaid
 graph TD
@@ -81,6 +81,53 @@ graph TD
 
 Las dependencias apuntan siempre hacia el dominio. Las decisiones de diseño y sus alternativas están en el [ADR-002](docs/adr/ADR-002-diseno-flujo-asignacion.md), y la vista general del sistema en [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## Implementación: Vertical Slice Ejecutable
+
+El flujo de asignación está implementado de punta a punta: **API HTTP → caso de uso → dominio → PostgreSQL → aviso asíncrono**, respetando los límites diseñados.
+
+| Aspecto | Solución |
+| :--- | :--- |
+| Tecnología | .NET 10 / C#, ASP.NET Core, PostgreSQL 17 en Docker, EF Core ([ADR-003](docs/adr/ADR-003-implementacion-vertical-slice.md)) |
+| Persistencia | Migraciones versionadas de EF Core; esquemas separados por módulo |
+| Consistencia | Control optimista por versión + guarda atómica de capacidad del repartidor |
+| Integración | Bandeja de salida (*outbox*) con reintentos limitados, espera creciente y Dead Letter Queue |
+| Seguridad | Clave de API por operador (guardada como hash); el operador sale de la identidad, no de la petición |
+| Observabilidad | Registros estructurados con id de correlación, métricas y trazas con OpenTelemetry, `/health` |
+| Pruebas | **76 pruebas**: 26 de dominio, 23 de aplicación, 20 de integración contra PostgreSQL real y 7 *fitness functions* de arquitectura |
+
+```mermaid
+graph TD
+    Operador[👤 Operador] -->|X-Api-Key| API[🌐 API LogiTracker]
+    API -->|AssignCourierCommand| UseCase[⚙️ AssignCourierUseCase]
+    UseCase -->|AssignCourier| Delivery[💎 Delivery <br> Invariantes]
+    UseCase -->|Puertos| Adaptadores[🔌 Adaptadores]
+    Adaptadores -->|Entrega + carga + bandeja <br> en una transacción| BD[(🗄️ PostgreSQL)]
+    Despachador[📤 Despachador] -->|Lee bandeja| BD
+    Despachador -->|Reintentos / DLQ| Notif[📲 Notificaciones simuladas]
+```
+
+### Cómo ejecutar la Actividad 4
+
+**Requisitos:** [.NET SDK 10](https://dotnet.microsoft.com/download) y [Docker Desktop](https://www.docker.com/products/docker-desktop/) en ejecución.
+
+```powershell
+# 1. Base de datos local (PostgreSQL 17)
+docker compose up -d
+
+# 2. API: aplica las migraciones y carga datos de demostración al iniciar
+dotnet run --project src/LogiTracker.Api
+#    -> http://localhost:5125/scalar   (documentación interactiva)
+#    -> http://localhost:5125/health
+
+# 3. Todas las comprobaciones de calidad, con evidencia en docs/actividad-4/evidencia/
+powershell -ExecutionPolicy Bypass -File scripts/verify.ps1
+```
+
+- **Demostración guiada:** [src/LogiTracker.Api/LogiTracker.Api.http](src/LogiTracker.Api/LogiTracker.Api.http). Se ejecuta en VS Code con la extensión *REST Client* y cubre el camino feliz, los rechazos y las fallas controladas.
+- **Clave de demostración:** `X-Api-Key: dev-key-marta-0001`. Es **solo para desarrollo local**: en otros entornos las claves se emiten fuera del código.
+- **Solo las pruebas:** `dotnet test LogiTracker.slnx`. Las de integración levantan su propio PostgreSQL efímero con Docker.
+- **Migraciones manuales** (opcional): `dotnet tool restore` y luego `dotnet ef database update --project src/LogiTracker.Infrastructure --startup-project src/LogiTracker.Api`.
+
 ## Documentación por Actividad
 
 ### Actividad 1: Diagnóstico y contexto
@@ -104,8 +151,16 @@ Las dependencias apuntan siempre hacia el dominio. Las decisiones de diseño y s
 * [Mapa de contextos y contratos](docs/actividad-3/mapa-contextos.md)
 * [Casos de uso, puertos y adaptadores](docs/actividad-3/casos-uso-puertos-adaptadores.md)
 * [Diagramas C4](docs/actividad-3/c4.md)
+* [Resumen de la actividad](docs/actividad-3/resumen-actividad-3.md)
+
+### Actividad 4: Construcción, validación y defensa final
+* [Implementación: recorrido por capas, trazabilidad y patrones aplicados](docs/actividad-4/implementacion.md)
+* [Riesgos y observabilidad: pre-mortem, mitigaciones y señales](docs/actividad-4/riesgos-y-observabilidad.md)
+* [Resultados, riesgos residuales y próximos pasos](docs/actividad-4/resultados-y-proximos-pasos.md)
+* [Evidencia de ejecución](docs/actividad-4/evidencia/)
 
 ### Arquitectura y Registros de Decisión (ADR)
 * [ARCHITECTURE.md](ARCHITECTURE.md): vista general, módulos, reglas críticas y límites
 * [ADR-001: Monolito modular por dominios](docs/adr/ADR-001-estructura-monolito-modular.md)
 * [ADR-002: Diseño del dominio y de las capas para la asignación](docs/adr/ADR-002-diseno-flujo-asignacion.md)
+* [ADR-003: Implementación del vertical slice y ajustes al diseño](docs/adr/ADR-003-implementacion-vertical-slice.md)
